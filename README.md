@@ -9,3 +9,4 @@ Change parameter in ***config.py*** file, then run ***run_train_dualpath.py*** f
 - nltk
 - sklearn
 - cv2
+- PIL
