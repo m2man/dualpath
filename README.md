@@ -10,6 +10,7 @@ Change parameter in ***config_dualpath.py*** file, then run ***run_train_dualpat
 - sklearn
 - cv2
 - PIL
+- gensim
 
 ### Download files from Drive with gdown
 To download file from Drive, you can use gdown (install by ```pip install gdown```)
