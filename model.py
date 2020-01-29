@@ -6,7 +6,7 @@ from tensorflow import keras
 from tensorflow.keras.regularizers import l2
 import numpy as np
 import pickle
-import config
+import config_dualpath as config
 
 cosine_loss = keras.losses.CosineSimilarity()
 
