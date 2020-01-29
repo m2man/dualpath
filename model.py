@@ -246,7 +246,7 @@ def create_model(nclass, nword=len(my_dictionary), pretrained_model='', ft_resne
   dualpath_model = keras.Model(inputs=[image_input, text_input], outputs=[image_final_class, text_final_class, image_f, text_f])
   dualpath_model.summary()
 
-  if pretrained_model != '' and os.path.exists(pretrained_model):
+  if pretrained_model != '':
     dualpath_model.load_weights(pretrained_model)
   else:
     print("Cannot find pretrained model --> Train from scratch!")
