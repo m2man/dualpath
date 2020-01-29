@@ -140,7 +140,10 @@ def main():
         model.save_weights('./checkpoints_v2_' + str(current_epoch) + '/my_checkpoint')
 
     last_index = 0
-    print(info)  
+    print(info)
+    with open(log_filename, 'a') as f:
+      f.write('{}\n'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')))
+      f.write(info+'\n')
     print("Saving weights ...")
     model.save_weights('./checkpoints_v2_' + str(current_epoch) + '/my_checkpoint')
 
