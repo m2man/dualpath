@@ -3,7 +3,7 @@ import nltk
 nltk.download('stopwords')
 nltk.download('punkt')
 from tensorflow import keras
-from keras.regularizers import l2
+from tensorflow.keras.regularizers import l2
 import numpy as np
 import pickle
 import config
