@@ -13,7 +13,7 @@ import random
 import datetime
 
 from tensorflow import keras
-from keras.regularizers import l2
+from tensorflow.keras.regularizers import l2
 import numpy as np
 import pickle
 import json
@@ -63,7 +63,10 @@ def main():
     pretrained_model = './checkpoints_v2_' + str(config.last_epoch) + '/my_checkpoint'
 
   model = create_model(nclass=len(images_names_train), nword=len(my_dictionary), pretrained_model=pretrained_model, ft_resnet=False)
-
+  
+  # Adadelta --> if run this, comment the in-loop optimizer
+  #optimizer = keras.optimizers.Adadelta()
+  
   seeds = [x for x in range(config.numb_epochs)]
 
   if config.stage_2: # parameter for ranking loss (stage 2)
@@ -89,8 +92,7 @@ def main():
         learnRate = config.decay_lr_min
       else:
         learnRate = config.learn_rate
-    optimizer = keras.optimizers.SGD(learning_rate=learnRate, 
-                                     momentum=config.moment_val)
+    optimizer = keras.optimizers.SGD(learning_rate=learnRate, momentum=config.moment_val)
     print("Start Training")
     for index in tqdm(range(last_index, len(batch_dataset))):
       batch_data = batch_dataset[index]
