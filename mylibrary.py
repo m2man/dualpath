@@ -2,11 +2,11 @@
 Define your functions here
 '''
 import random
-from keras.preprocessing.image import load_img
-from keras.preprocessing.image import save_img
-from keras.preprocessing.image import img_to_array
-from keras.preprocessing.image import ImageDataGenerator
-from keras.preprocessing.image import array_to_img
+from tensorflow.keras.preprocessing.image import load_img
+from tensorflow.keras.preprocessing.image import save_img
+from tensorflow.keras.preprocessing.image import img_to_array
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import array_to_img
 import cv2
 import os
 import numpy as np
