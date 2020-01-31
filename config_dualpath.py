@@ -10,11 +10,6 @@ moment_val = 0.9
 
 image_folders = ['flickr30k_images/']
 
-# Apply decay lr or not
-decay_lr = False
-decay_lr_portion = 0.3 # portion of decreasing lr --> lr[t] = (1-portion)*lr[t-1]
-decay_lr_min = 0.001 # minimum of lr
-
 # Stage 2 or stage 1
 stage_2 = False
 
