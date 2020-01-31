@@ -13,7 +13,7 @@ import random
 import datetime
 
 from tensorflow import keras
-from tensorflow.keras.regularizers import l2
+from keras.regularizers import l2
 import numpy as np
 import pickle
 import json
@@ -53,20 +53,6 @@ def main():
       list_dataset.append(temp)
   label_encoder, onehot_all_class = mylib.create_onehot_all_label(all_class)
 
-  # Restore the weights
-  if config.last_index == 0:
-    if config.last_epoch == 0:
-      pretrained_model = ''
-    else:
-      pretrained_model = './checkpoints_v2_' + str(config.last_epoch-1) + '/my_checkpoint'
-  else:
-    pretrained_model = './checkpoints_v2_' + str(config.last_epoch) + '/my_checkpoint'
-
-  model = create_model(nclass=len(images_names_train), nword=len(my_dictionary), pretrained_model=pretrained_model, ft_resnet=False)
-  
-  # Adadelta --> if run this, comment the in-loop optimizer
-  #optimizer = keras.optimizers.Adadelta()
-  
   seeds = [x for x in range(config.numb_epochs)]
 
   if config.stage_2: # parameter for ranking loss (stage 2)
@@ -75,6 +61,23 @@ def main():
     lamb_0 = 0
 
   last_index = config.last_index
+
+  
+  model = create_model(nclass=len(images_names_train), nword=len(my_dictionary), ft_resnet=False)
+  
+  save_path = './cpmanger_' + str(config.last_epoch)
+  optimizer = keras.optimizers.Adadelta()
+  ckpt = tf.train.Checkpoint(iters=tf.Variable(config.last_index), 
+                            epoch=tf.Variable(config.last_epoch), 
+                            optimizer=optimizer, model=model)
+  manager = tf.train.CheckpointManager(ckpt, save_path, max_to_keep=1)
+  
+  ckpt.restore(manager.latest_checkpoint)
+  if manager.latest_checkpoint:
+    print("Restored from {}".format(manager.latest_checkpoint))
+  else:
+    print("Initializing from scratch.")
+
   for current_epoch in range(config.last_epoch, config.numb_epochs):
     epoch_loss_total_avg = tf.keras.metrics.Mean() # track mean loss in current epoch
     epoch_loss_visual_avg = tf.keras.metrics.Mean() # track mean loss in current epoch
@@ -85,14 +88,6 @@ def main():
     print("Generate Batch")
     batch_dataset = mylib.generate_batch_dataset(list_dataset, config.batch_size, seed=seeds[current_epoch])
     
-    if config.decay_lr and current_epoch <= 10:
-      learnRate = max(config.decay_lr_min, ((1-config.decay_lr_portion)**current_epoch) * config.learn_rate)
-    else:
-      if config.decay_lr:
-        learnRate = config.decay_lr_min
-      else:
-        learnRate = config.learn_rate
-    optimizer = keras.optimizers.SGD(learning_rate=learnRate, momentum=config.moment_val)
     print("Start Training")
     for index in tqdm(range(last_index, len(batch_dataset))):
       batch_data = batch_dataset[index]
@@ -128,7 +123,11 @@ def main():
                                                                                                                           epoch_loss_visual_avg.result(),
                                                                                                                           epoch_loss_text_avg.result(),
                                                                                                                           epoch_loss_total_avg.result())
-                                                                  
+      ckpt.iters.assign_add(1)
+      if int(ckpt.iters) % 20 == 0:
+        save_path = manager.save()
+        print("Saved checkpoint for epoch {} - iter {}: {}".format(int(ckpt.epoch)+1, int(ckpt.iters), save_path))                                                            
+      
       if (index+1) % 20 == 0 or index <= 9:
         print(info)
       
@@ -136,16 +135,12 @@ def main():
         with open(log_filename, 'a') as f:
           f.write('{}\n'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')))
           f.write(info+'\n')
-        print("Saving weights ...")
-        model.save_weights('./checkpoints_v2_' + str(current_epoch) + '/my_checkpoint')
 
     last_index = 0
     print(info)
-    with open(log_filename, 'a') as f:
-      f.write('{}\n'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')))
-      f.write(info+'\n')
-    print("Saving weights ...")
-    model.save_weights('./checkpoints_v2_' + str(current_epoch) + '/my_checkpoint')
+    ckpt.epoch.assign_add(1)
+    save_path = manager.save()
+    print("Saved checkpoint for epoch {} - iter {}: {}".format(int(ckpt.epoch), int(ckpt.iters), save_path))  
 
 if __name__ == "__main__":
     main()
