@@ -179,8 +179,8 @@ class Deep_CNN_Text_Model(keras.Model):
     return x
 
 # ===== DEFINE LOSS =====
-def total_loss(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1):
-  image_y, text_y, f_image_y, f_text_y = model(input_x)
+def total_loss(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1, training=True):
+  image_y, text_y, f_image_y, f_text_y = model(input_x, training=training)
   true_class = np.argmax(target_y, axis=1)
   batch_size = true_class.shape[0]
   #batch_size = tf.dtypes.cast(batch_size, tf.int32)
