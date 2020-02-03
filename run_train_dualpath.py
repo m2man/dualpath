@@ -25,12 +25,14 @@ from model import *
 
 # ===== MAIN FUNCTION =====
 def main():
+  save_path = 'checkpoints/' # directory path to save checkpoint
   if config.stage_2:
-    log_filename = os.path.join('report/dualpath_v2/','dualpath_stage_2.log')
+    log_filename = os.path.join('report/dualpath/','dualpath_stage_2.log')
   else:
-    log_filename = os.path.join('report/dualpath_v2/','dualpath_stage_1.log')
+    log_filename = os.path.join('report/dualpath/','dualpath_stage_1.log')
 
   if not os.path.exists('report/dualpath_v2/'):
+    os.mkdir('report/')
     os.mkdir('report/dualpath_v2/')
  
   images_names = list(dataset_flickr30k.keys())
@@ -60,25 +62,25 @@ def main():
   else:
     lamb_0 = 0
 
-  last_index = config.last_index
-
-  
   model = create_model(nclass=len(images_names_train), nword=len(my_dictionary), ft_resnet=False)
   
-  save_path = './cpmanger_' + str(config.last_epoch)
   optimizer = keras.optimizers.Adadelta()
-  ckpt = tf.train.Checkpoint(iters=tf.Variable(config.last_index), 
-                            epoch=tf.Variable(config.last_epoch), 
+  ckpt = tf.train.Checkpoint(iters=tf.Variable(0), 
+                            epoch=tf.Variable(0), 
                             optimizer=optimizer, model=model)
   manager = tf.train.CheckpointManager(ckpt, save_path, max_to_keep=1)
   
   ckpt.restore(manager.latest_checkpoint)
   if manager.latest_checkpoint:
     print("Restored from {}".format(manager.latest_checkpoint))
+    last_epoch = int(ckpt.epoch)
+    last_index = int(ckpt.iters)
   else:
     print("Initializing from scratch.")
-
-  for current_epoch in range(config.last_epoch, config.numb_epochs):
+    last_epoch = 0
+    last_index = 0
+    
+  for current_epoch in range(last_epoch, config.numb_epochs):
     epoch_loss_total_avg = tf.keras.metrics.Mean() # track mean loss in current epoch
     epoch_loss_visual_avg = tf.keras.metrics.Mean() # track mean loss in current epoch
     epoch_loss_text_avg = tf.keras.metrics.Mean() # track mean loss in current epoch
@@ -123,24 +125,26 @@ def main():
                                                                                                                           epoch_loss_visual_avg.result(),
                                                                                                                           epoch_loss_text_avg.result(),
                                                                                                                           epoch_loss_total_avg.result())
-      ckpt.iters.assign_add(1)
-      if int(ckpt.iters) % 20 == 0:
-        save_path = manager.save()
-        print("Saved checkpoint for epoch {} - iter {}: {}".format(int(ckpt.epoch)+1, int(ckpt.iters), save_path))                                                            
+      ckpt.iters.assign_add(1)                                                            
       
       if (index+1) % 20 == 0 or index <= 9:
         print(info)
       
       if (index+1) % 20 == 0:
+        save_path = manager.save()
+        print("Saved checkpoint for epoch {} - iter {}: {}".format(int(ckpt.epoch)+1, int(ckpt.iters), save_path))
         with open(log_filename, 'a') as f:
           f.write('{}\n'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')))
           f.write(info+'\n')
-
-    last_index = 0
+    
     print(info)
-    ckpt.epoch.assign_add(1)
     save_path = manager.save()
-    print("Saved checkpoint for epoch {} - iter {}: {}".format(int(ckpt.epoch), int(ckpt.iters), save_path))  
+    print("Saved checkpoint for epoch {} - iter {}: {}".format(int(ckpt.epoch), int(ckpt.iters), save_path)) 
+    
+    last_index = 0
+    ckpt.iters = tf.Variable(0)
+    ckpt.epoch.assign_add(1)
+     
 
 if __name__ == "__main__":
     main()
