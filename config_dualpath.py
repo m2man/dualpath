@@ -2,11 +2,9 @@ dictionary_path = 'Flickr30k_dictionary.pickle'
 dataset_path = 'Flickr30k_dataset.pickle'
 numb_epochs = 11
 seeds = [x for x in range(numb_epochs)]
-last_epoch = 0
-last_index = 0
 batch_size = 32
-learn_rate = 0.001
-moment_val = 0.9
+#learn_rate = 0.01
+#moment_val = 0.9
 
 image_folders = ['flickr30k_images/']
 
