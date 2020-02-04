@@ -1,0 +1,7 @@
+tensorflow
+tqdm
+nltk
+scikit-learn
+opencv-python
+pillow
+gensim
