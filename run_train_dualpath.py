@@ -12,8 +12,6 @@ import time
 import random
 import datetime
 
-from tensorflow import keras
-from keras.regularizers import l2
 import numpy as np
 import pickle
 import json
@@ -22,6 +20,8 @@ from tqdm import tqdm
 import os
 import config_dualpath as config
 from model import *
+
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # CPU
 
 # ===== MAIN FUNCTION =====
 def main():
