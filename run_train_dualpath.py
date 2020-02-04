@@ -4,10 +4,6 @@ print("Require Tensorflow >= 2.0.0 and Current TF version is " + str(tf.__versio
 #tf.enable_eager_execution() # Enable interactive tensorflow
 print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
-import nltk
-nltk.download('stopwords')
-nltk.download('punkt')
-
 import time
 import random
 import datetime
