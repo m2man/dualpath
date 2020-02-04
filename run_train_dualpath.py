@@ -31,9 +31,9 @@ def main():
   else:
     log_filename = os.path.join('report/dualpath/','dualpath_stage_1.log')
 
-  if not os.path.exists('report/dualpath_v2/'):
+  if not os.path.exists('report/dualpath/'):
     os.mkdir('report/')
-    os.mkdir('report/dualpath_v2/')
+    os.mkdir('report/dualpath/')
  
   images_names = list(dataset_flickr30k.keys())
 
@@ -73,12 +73,10 @@ def main():
   ckpt.restore(manager.latest_checkpoint)
   if manager.latest_checkpoint:
     print("Restored from {}".format(manager.latest_checkpoint))
-    last_epoch = int(ckpt.epoch)
-    last_index = int(ckpt.iters)
   else:
     print("Initializing from scratch.")
-    last_epoch = 0
-    last_index = 0
+  last_epoch = int(ckpt.epoch)
+  last_index = int(ckpt.iters)
     
   for current_epoch in range(last_epoch, config.numb_epochs):
     epoch_loss_total_avg = tf.keras.metrics.Mean() # track mean loss in current epoch
