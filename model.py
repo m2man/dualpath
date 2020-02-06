@@ -198,7 +198,7 @@ def total_loss(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1, 
   cosine_loss_IaTa = cosine_loss(f_image_y[0:batch_size], f_text_y[0:batch_size])
   cosine_loss_TaIn = cosine_loss(f_text_y[0:batch_size], f_image_y[batch_size:])
   cosine_loss_TaIa = cosine_loss(f_text_y[0:batch_size], f_image_y[0:batch_size])
-  ranking_loss = tf.math.reduce_sum(tf.math.maximum(0., 1 - (cosine_loss_IaTn - cosine_loss_IaTa))) + tf.math.reduce_sum(tf.math.maximum(0., 1 - (cosine_loss_TaIn - cosine_loss_TaIa)))
+  ranking_loss = tf.math.reduce_sum(tf.math.maximum(0., alpha - (cosine_loss_IaTn - cosine_loss_IaTa))) + tf.math.reduce_sum(tf.math.maximum(0., alpha - (cosine_loss_TaIn - cosine_loss_TaIa)))
   ranking_loss = ranking_loss / batch_size
   #print("instance loss: {} --- ranking loss: {}".format(instance_loss, ranking_loss))
   loss = tf.math.add(lamb_0 * ranking_loss, instance_loss)
