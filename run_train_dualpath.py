@@ -42,15 +42,14 @@ def main():
   images_names_test = [images_names[i] for i in index_test]
 
   list_dataset = []
-  all_class = []
+  all_class = [x[0:-4] for x in images_names_train]
+  all_class_sort = sorted(all_class)
   for idx, img_name in enumerate(images_names_train):
-    img_class = img_name[0:-4] # remove '.jpg'
-    all_class += [img_class]
+    img_class = all_class_sort.index(img_name[0:-4])
     for des in dataset_flickr30k[img_name]:
       temp = [img_name, des, img_class]
       list_dataset.append(temp)
-  label_encoder, onehot_all_class = mylib.create_onehot_all_label(all_class)
-
+      
   seeds = [x for x in range(config.numb_epochs)]
 
   if config.stage_2: # parameter for ranking loss (stage 2)
@@ -90,8 +89,6 @@ def main():
       img_ft, txt_ft, lbl = mylib.get_feature_from_batch(batch_data, 
                                                         image_folders=config.image_folders,
                                                         dictionary=my_dictionary,
-                                                        list_label=all_class,
-                                                        onehot_all_label=onehot_all_class,
                                                         resize_img=224, max_len=32)
       inputs = [tf.convert_to_tensor(img_ft, dtype=tf.float32), 
                 tf.convert_to_tensor(txt_ft, dtype=tf.float32)]
