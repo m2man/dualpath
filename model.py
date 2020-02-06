@@ -8,7 +8,8 @@ import numpy as np
 import pickle
 import config_dualpath as config
 
-cosine_loss = keras.losses.CosineSimilarity()
+class_loss = tf.keras.losses.SparseCategoricalCrossentropy()
+cosine_loss = tf.keras.losses.CosineSimilarity(reduction=tf.keras.losses.Reduction.NONE)
 
 # ===== LOAD DATA =====
 with open(config.dictionary_path, 'rb') as f:
@@ -181,28 +182,23 @@ class Deep_CNN_Text_Model(keras.Model):
 # ===== DEFINE LOSS =====
 def total_loss(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1, training=True):
   image_y, text_y, f_image_y, f_text_y = model(input_x, training=training)
-  true_class = np.argmax(target_y, axis=1)
-  batch_size = true_class.shape[0]
+  batch_size = target_y.shape[0]
   #batch_size = tf.dtypes.cast(batch_size, tf.int32)
 
-  p_visual = tf.math.reduce_sum(tf.math.multiply(image_y[0:batch_size], target_y), axis = 1)
-  L_visual = -tf.math.reduce_mean(tf.math.log(p_visual + 1e-20))
+  L_visual = class_loss(target_y, image_y[0:batch_size])
 
-  p_text = tf.math.reduce_sum(tf.math.multiply(text_y[0:batch_size], target_y), axis = 1)
-  L_text = -tf.math.reduce_mean(tf.math.log(p_text + 1e-20))
+  L_text = class_loss(target_y, text_y[0:batch_size])
   #print("P_Vis {:.6f}: P_Txt {:.6f}: L_Vis {:.6f}: L_Txt {:.6f}".format(tf.math.reduce_min(p_visual), 
   #                                                                      tf.math.reduce_min(p_text),
   #                                                                      L_visual, L_text))
   instance_loss = tf.math.add(lamb_1*L_visual, lamb_2*L_text)
-
-  ranking_loss = 0
-  for i in range(batch_size):
-    Ia = f_image_y[i]
-    Ta = f_text_y[i]
-    In = f_image_y[batch_size + i]
-    Tn = f_text_y[batch_size + i]
-    ranking_loss += tf.math.add(tf.math.maximum(0.0, alpha - (cosine_loss(Ia, Ta) - cosine_loss(Ia, Tn))),
-                                tf.math.maximum(0.0, alpha - (cosine_loss(Ta, Ia) - cosine_loss(Ta, In))))
+  
+  # Ranking loss
+  cosine_loss_IaTn = cosine_loss(f_image_y[0:batch_size], f_text_y[batch_size:])
+  cosine_loss_IaTa = cosine_loss(f_image_y[0:batch_size], f_text_y[0:batch_size])
+  cosine_loss_TaIn = cosine_loss(f_text_y[0:batch_size], f_image_y[batch_size:])
+  cosine_loss_TaIa = cosine_loss(f_text_y[0:batch_size], f_image_y[0:batch_size])
+  ranking_loss = tf.math.reduce_sum(tf.math.maximum(0., 1 - (cosine_loss_IaTn - cosine_loss_IaTa))) + tf.math.reduce_sum(tf.math.maximum(0., 1 - (cosine_loss_TaIn - cosine_loss_TaIa)))
   ranking_loss = ranking_loss / batch_size
   #print("instance loss: {} --- ranking loss: {}".format(instance_loss, ranking_loss))
   loss = tf.math.add(lamb_0 * ranking_loss, instance_loss)
