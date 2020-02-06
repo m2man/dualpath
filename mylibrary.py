@@ -10,8 +10,6 @@ from tensorflow.keras.preprocessing.image import array_to_img
 import cv2
 import os
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import OneHotEncoder
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer 
@@ -64,22 +62,6 @@ def generate_augmentation_images(image_path, number_of_images = 5, resize = None
     #image = batch[0].astype('uint8')
     aug_img = array_to_img(batch[0])
     save_img(save + prefix_name + '_' + str(i) + '.jpg', aug_img)
-
-def create_images_dataset(link_to_folder, file_specific='.jpg'):
-  # Create a 4D numpy array for images (number_of_images x H x W x C)
-  # Create the label of that images based on their prefix name (onehot coding)
-  list_images = [f for f in os.listdir(link_to_folder) if f.endswith(file_specific)]
-  list_images_class = [x[0:(x.find("_"))] for x in list_images]
-  onehot_encoded = create_onehot_all_label(list_images_class)
-  for index, img in enumerate(list_images):
-    data = load_img(link_to_folder + img)
-    data = img_to_array(data)
-    data = np.expand_dims(data, 0)
-    if index == 0:
-      result = data
-    else:
-      result = np.vstack((result, data))
-  return result, onehot_encoded
 
 def embedding_image(link_to_image, resize=None, scale=True, prob_aug=0.5):
   # prob_aug is probability that you may want to apply data augmentation(flip, illumination, skew, ...)
