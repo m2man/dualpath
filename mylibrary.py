@@ -160,7 +160,7 @@ def generate_batch_dataset(dataset, batch_size=32, seed=159):
 
   return list_batch_data
 
-def get_feature_from_batch_n(batch_data, image_folders, dictionary, resize_img=224, max_len=32):
+def get_feature_from_batch(batch_data, image_folders, dictionary, resize_img=224, max_len=32):
   # Get input feature from given batch_data (1 data element in a batch)
   # Output will be img, txt, and label ft
   batch_size = int(len(batch_data) / 2)
