@@ -81,32 +81,6 @@ def create_images_dataset(link_to_folder, file_specific='.jpg'):
       result = np.vstack((result, data))
   return result, onehot_encoded
 
-def create_onehot_all_label(list_label):
-  # Create onehot coding from the list_label
-  # Ex: input = [a, b] --> output = [[1., 0.],[0., 1.]]
-  # Also return the labelencoder class inorder to reverse the name (if applicable)
-  values = np.array(list_label)
-  ## integer encode
-  label_encoder = LabelEncoder()
-  integer_encoded = label_encoder.fit_transform(values)
-  #print(integer_encoded)
-  ## binary encode
-  onehot_encoder = OneHotEncoder(sparse=False)
-  integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-  onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
-  return label_encoder, onehot_encoded
-
-def create_onehot_label(label, list_label, onehot_all_label):
-  # Get the onehot encoding of the label in the list_label and list onehot_label
-  index = list_label.index(label)
-  result = onehot_all_label[index]
-  result = np.expand_dims(result, 0)
-  return result
-
-def get_label_from_onehot(label_encoder, onehot_label):
-  # Get the name of the class from the onehot encoder label
-  return label_encoder.inverse_transform([np.argmax(onehot_label)])[0]
-
 def embedding_image(link_to_image, resize=None, scale=True, prob_aug=0.5):
   # prob_aug is probability that you may want to apply data augmentation(flip, illumination, skew, ...)
   img = load_img(link_to_image)
@@ -204,23 +178,21 @@ def generate_batch_dataset(dataset, batch_size=32, seed=159):
 
   return list_batch_data
 
-def get_feature_from_batch(batch_data, image_folders, dictionary, list_label, onehot_all_label, resize_img=224, max_len=32):
+def get_feature_from_batch_n(batch_data, image_folders, dictionary, resize_img=224, max_len=32):
   # Get input feature from given batch_data (1 data element in a batch)
   # Output will be img, txt, and label ft
   batch_size = int(len(batch_data) / 2)
   batch_img = np.zeros([len(batch_data), resize_img, resize_img, 3])
   batch_txt = np.zeros([len(batch_data), 1, max_len, len(dictionary)])
-  batch_lbl = np.zeros([batch_size, len(list_label)])
+  batch_lbl = np.zeros(batch_size, dtype=np.int64)
   for i in range(batch_size):
-    targets = create_onehot_label(batch_data[i][2], list_label, onehot_all_label)
-    targets = np.expand_dims(targets, 0)
-    batch_lbl[i] = targets
+    batch_lbl[i] = batch_data[i][2]
 
     img_x = batch_data[i][0]
     try:
       for image_folder in image_folders:
         try:
-          image_input_x = embedding_image(link_to_image=image_folder+img_x, resize=224)
+          image_input_x = embedding_image(link_to_image='../'+image_folder+img_x, resize=224)
           break
         except FileNotFoundError:
           continue
@@ -232,7 +204,7 @@ def get_feature_from_batch(batch_data, image_folders, dictionary, list_label, on
     try:
       for image_folder in image_folders:
         try:
-          image_input_x = embedding_image(link_to_image=image_folder+img_x, resize=224)
+          image_input_x = embedding_image(link_to_image='../'+image_folder+img_x, resize=224)
           break
         except FileNotFoundError:
           continue
