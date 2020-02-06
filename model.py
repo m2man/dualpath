@@ -8,7 +8,7 @@ import numpy as np
 import pickle
 import config_dualpath as config
 
-class_loss = tf.keras.losses.SparseCategoricalCrossentropy()
+class_loss = tf.keras.losses.SparseCategoricalCrossentropy() # remove onehot encoding
 cosine_loss = tf.keras.losses.CosineSimilarity(reduction=tf.keras.losses.Reduction.NONE)
 
 # ===== LOAD DATA =====
