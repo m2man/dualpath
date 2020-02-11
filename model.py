@@ -7,20 +7,21 @@ from tensorflow.keras.regularizers import l2
 import numpy as np
 import pickle
 import config_dualpath as config
+from gensim.models import KeyedVectors
+tf.keras.backend.set_floatx('float32')
 
-class_loss = tf.keras.losses.SparseCategoricalCrossentropy() # remove onehot encoding
+class_loss = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE) # remove onehot encoding
 cosine_loss = tf.keras.losses.CosineSimilarity(reduction=tf.keras.losses.Reduction.NONE)
 
 # ===== LOAD DATA =====
-with open(config.dictionary_path, 'rb') as f:
-  my_dictionary = pickle.load(f)
+with tf.device('/device:CPU:0'):
+  with open(config.dictionary_path, 'rb') as f:
+    my_dictionary = pickle.load(f)
 
-with open(config.dataset_path, 'rb') as f:
-  dataset_flickr30k = pickle.load(f)
+  with open(config.dataset_path, 'rb') as f:
+    dataset_flickr30k = pickle.load(f)
 
-# ===== LOAD KERNEL INIT =====
-from gensim.models import KeyedVectors
-model_word = KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True)
+  model_word = KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True)
 
 NUMB_WORDS = len(my_dictionary)
 NUMB_FT = 300
@@ -180,14 +181,46 @@ class Deep_CNN_Text_Model(keras.Model):
     return x
 
 # ===== DEFINE LOSS =====
+def total_loss_v0(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1, training=True):
+  image_y, text_y, f_image_y, f_text_y = model(input_x, training=training)
+  true_class = np.argmax(target_y, axis=1)
+  batch_size = true_class.shape[0]
+  #batch_size = tf.dtypes.cast(batch_size, tf.int32)
+
+  p_visual = tf.math.reduce_sum(tf.math.multiply(image_y[0:batch_size], target_y), axis = 1)
+  L_visual = -tf.math.reduce_mean(tf.math.log(p_visual + 1e-20))
+
+  p_text = tf.math.reduce_sum(tf.math.multiply(text_y[0:batch_size], target_y), axis = 1)
+  L_text = -tf.math.reduce_mean(tf.math.log(p_text + 1e-20))
+  #print("P_Vis {:.6f}: P_Txt {:.6f}: L_Vis {:.6f}: L_Txt {:.6f}".format(tf.math.reduce_min(p_visual), 
+  #                                                                      tf.math.reduce_min(p_text),
+  #                                                                      L_visual, L_text))
+  instance_loss = tf.math.add(lamb_1*L_visual, lamb_2*L_text)
+
+  ranking_loss = 0
+  for i in range(batch_size):
+    Ia = f_image_y[i]
+    Ta = f_text_y[i]
+    In = f_image_y[batch_size + i]
+    Tn = f_text_y[batch_size + i]
+    ranking_loss += tf.math.add(tf.math.maximum(0.0, alpha - (cosine_loss(Ia, Ta) - cosine_loss(Ia, Tn))),
+                                tf.math.maximum(0.0, alpha - (cosine_loss(Ta, Ia) - cosine_loss(Ta, In))))
+  ranking_loss = ranking_loss / batch_size
+  #print("instance loss: {} --- ranking loss: {}".format(instance_loss, ranking_loss))
+  loss = tf.math.add(lamb_0 * ranking_loss, instance_loss)
+  return loss, L_visual, L_text, ranking_loss
+
 def total_loss(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1, training=True):
   image_y, text_y, f_image_y, f_text_y = model(input_x, training=training)
   batch_size = target_y.shape[0]
   #batch_size = tf.dtypes.cast(batch_size, tf.int32)
+  
+  #print(target_y.shape)
+  #print(image_y[0:batch_size].shape)
+	
+  L_visual = tf.math.reduce_mean(class_loss(target_y, image_y[0:batch_size])) 
 
-  L_visual = class_loss(target_y, image_y[0:batch_size])
-
-  L_text = class_loss(target_y, text_y[0:batch_size])
+  L_text = tf.math.reduce_mean(class_loss(target_y, text_y[0:batch_size]))
   #print("P_Vis {:.6f}: P_Txt {:.6f}: L_Vis {:.6f}: L_Txt {:.6f}".format(tf.math.reduce_min(p_visual), 
   #                                                                      tf.math.reduce_min(p_text),
   #                                                                      L_visual, L_text))
@@ -204,6 +237,34 @@ def total_loss(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1, 
   loss = tf.math.add(lamb_0 * ranking_loss, instance_loss)
   return loss, L_visual, L_text, ranking_loss
 
+@tf.function
+def total_loss_distributed(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1, training=True):
+	image_y, text_y, f_image_y, f_text_y = model(input_x, training=training)
+	#target_y = tf.squeeze(target_y)
+	#print(target_y)
+	batch_size = config.batch_size#target_y.shape[0]
+	#batch_size = tf.dtypes.cast(batch_size, tf.int32)
+	#print(target_y.shape)
+	#print(image_y[0:batch_size].shape)
+	L_visual = class_loss(target_y, image_y[0:batch_size])
+
+	L_text = class_loss(target_y, text_y[0:batch_size])
+	#print("P_Vis {:.6f}: P_Txt {:.6f}: L_Vis {:.6f}: L_Txt {:.6f}".format(tf.math.reduce_min(p_visual), 
+	#                                                                      tf.math.reduce_min(p_text),
+	#                                                                      L_visual, L_text))
+	instance_loss = tf.math.add(lamb_1*L_visual, lamb_2*L_text)
+
+	# Ranking loss
+	cosine_loss_IaTn = cosine_loss(f_image_y[0:batch_size], f_text_y[batch_size:])
+	cosine_loss_IaTa = cosine_loss(f_image_y[0:batch_size], f_text_y[0:batch_size])
+	cosine_loss_TaIn = cosine_loss(f_text_y[0:batch_size], f_image_y[batch_size:])
+	cosine_loss_TaIa = cosine_loss(f_text_y[0:batch_size], f_image_y[0:batch_size])
+	ranking_loss = tf.math.reduce_sum(tf.math.maximum(0., alpha - (cosine_loss_IaTn - cosine_loss_IaTa))) + tf.math.reduce_sum(tf.math.maximum(0., alpha - (cosine_loss_TaIn - cosine_loss_TaIa)))
+	ranking_loss = ranking_loss
+	#print("instance loss: {} --- ranking loss: {}".format(instance_loss, ranking_loss))
+	loss = tf.math.add(lamb_0 * ranking_loss, instance_loss)
+	return loss, L_visual, L_text, ranking_loss
+
 
 # ===== DEFINE GRAD =====
 def grad(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1):
@@ -212,7 +273,7 @@ def grad(model, input_x, target_y, alpha=1, lamb_0=1, lamb_1=1, lamb_2=1):
   return loss, loss_vis, loss_text, ranking_loss, tape.gradient(loss, model.trainable_variables)
 
 # ===== DEFINE ENTIRE MODEL =====
-def create_model(nclass, nword=len(my_dictionary), pretrained_model='', ft_resnet=False):
+def create_model(nclass, nword=len(my_dictionary), ft_resnet=False):
   # ft_resnet: fine tunning resnet or not (stage 1: False, stage 2: should True)
   INPUT_SIZE = (224, 224, 3)
   input_test = keras.layers.Input(shape=INPUT_SIZE)
