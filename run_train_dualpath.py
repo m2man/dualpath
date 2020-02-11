@@ -209,6 +209,9 @@ def main():
 						print(info)
 
 				print(info)
+				with open(log_filename, 'a') as f:
+					f.write('{}\n'.format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')))
+					f.write(info+'\n')
 				save_path = manager.save()
 				print("Saved checkpoint for epoch {} - iter {}: {}".format(int(ckpt.epoch), int(ckpt.iters), save_path)) 
 				
